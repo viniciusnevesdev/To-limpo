@@ -1,11 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DAY, initialState, parts, elapsed, stats, restart, validateState, parseBackup, backup, addCalendar, milestones } from '../model.js';
+import { DAY, initialState, parts, elapsed, cardTime, stats, restart, validateState, parseBackup, backup, addCalendar, milestones } from '../model.js';
 const now = Date.now() - 1000;
 test('tempo é calculado pela data, incluindo segundos e dias completos', () => {
   assert.deepEqual(parts(32 * DAY + 6 * 3600000 + 14 * 60000 + 8000), {days:32,hours:6,minutes:14,seconds:8});
   assert.equal(elapsed(now - 12 * DAY, now), 12 * DAY);
   assert.equal(elapsed(now + DAY, now), 0);
+});
+test('cartão mostra até três medidas com precisão adaptativa', () => {
+  assert.deepEqual(cardTime(8*3600000+56*60000+9000),{value:8,label:'horas',detail:'56 minutos e 9 segundos',interval:1000});
+  assert.deepEqual(cardTime(DAY+8*3600000+56*60000),{value:1,label:'dia',detail:'8 horas e 56 minutos',interval:60000});
+  assert.deepEqual(cardTime(7*DAY+8*3600000+56*60000),{value:7,label:'dias',detail:'8 horas',interval:3600000});
 });
 test('reinício preserva a sequência anterior e calcula recorde e média', () => {
   const c=initialState(now).counters[0];
