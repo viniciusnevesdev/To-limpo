@@ -18,6 +18,6 @@ Abra o endereço do app no Safari e escolha **Compartilhar → Adicionar à Tela
 
 ## Sobre esta entrega
 
-Versão 1.0.1. Contém o projeto completo, ícones, documentação, testes e workflow de publicação. Não inclui credenciais, arquivos do Git interno ou ferramentas usadas na conferência.
+Versão 1.0.3. Contém o projeto completo, ícones, documentação, testes e workflow de publicação. Não inclui credenciais, arquivos do Git interno ou ferramentas usadas na conferência.
 
 Os três contadores iniciais são demonstrações locais: remova-os por **Remover exemplos** ou pelos **Ajustes**. Registros reais ficam apenas no armazenamento local do dispositivo; exporte backups regularmente.

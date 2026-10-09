@@ -10,6 +10,13 @@ export function duration(ms, seconds = false) {
   const p = parts(ms);
   return `${p.days} ${p.days === 1 ? 'dia' : 'dias'}, ${p.hours} ${p.hours === 1 ? 'hora' : 'horas'} e ${p.minutes} ${p.minutes === 1 ? 'minuto' : 'minutos'}${seconds ? `, ${p.seconds} s` : ''}`;
 }
+const measure = (value, singular, plural) => `${value} ${value === 1 ? singular : plural}`;
+export function cardTime(ms) {
+  const safe = Math.max(0, ms), p = parts(safe);
+  if (safe < DAY) return { value:p.hours, label:p.hours === 1 ? 'hora' : 'horas', detail:`${measure(p.minutes,'minuto','minutos')} e ${measure(p.seconds,'segundo','segundos')}`, interval:1000 };
+  if (safe < 7 * DAY) return { value:p.days, label:p.days === 1 ? 'dia' : 'dias', detail:`${measure(p.hours,'hora','horas')} e ${measure(p.minutes,'minuto','minutos')}`, interval:60000 };
+  return { value:p.days, label:p.days === 1 ? 'dia' : 'dias', detail:measure(p.hours,'hora','horas'), interval:3600000 };
+}
 export function stats(counter, now = Date.now()) {
   const previous = counter.history.map(h => h.end - h.start);
   const current = elapsed(counter.start, now);

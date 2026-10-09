@@ -1,4 +1,4 @@
-import { DAY, COLORS, CATEGORIES, elapsed, parts, duration, stats, milestones, restart, parseBackup, backup } from './model.js';
+import { DAY, COLORS, CATEGORIES, elapsed, parts, duration, cardTime, stats, milestones, restart, parseBackup, backup } from './model.js';
 import { initialize, readState, updateState } from './storage.js';
 import { setupUpdates, checkUpdates } from './updates.js';
 const $ = selector => document.querySelector(selector);
@@ -28,7 +28,7 @@ const escape = text => String(text).replace(/[&<>"']/g, char => ({ '&':'&amp;', 
 const date = timestamp => new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }).format(timestamp);
 const localInput = timestamp => { const d = new Date(timestamp); return new Date(timestamp - d.getTimezoneOffset() * 60000).toISOString().slice(0,16); };
 const days = ms => `${parts(ms).days} ${parts(ms).days === 1 ? 'dia' : 'dias'}`;
-let state, page = 'home', selected = null, reordering = false, toastTimer, busy = false;
+let state, page = 'home', selected = null, reordering = false, toastTimer, tickTimer, busy = false;
 const channel = 'BroadcastChannel' in window ? new BroadcastChannel('to-limpo-changes') : null;
 function toast(message) { $('#toast').textContent = message; $('#toast').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.remove('show'), 4000); }
 function getCounter(id = selected) { return state.counters.find(c => c.id === id); }
@@ -48,13 +48,12 @@ function applyTheme() {
 function empty(title, copy, action = '') { return `<section class="panel empty">${icon('history')}<h2>${title}</h2><p>${copy}</p>${action}</section>`; }
 function title(text) { $('#page-title').textContent = text; $('#add').hidden = page !== 'home' || !!selected; }
 function card(c, index, list) {
-  const s = stats(c), p = parts(s.current);
+  const s = stats(c), compact = cardTime(s.current);
   return `<article class="counter-card" style="--tone:${c.color}">
     <button class="card-open" data-action="open" data-id="${escape(c.id)}" aria-label="Abrir ${escape(c.name)}">
       <div class="card-top"><span class="emoji" aria-hidden="true">${escape(c.emoji || '◷')}</span><span class="card-meta">${c.demo ? '<span class="tag">Exemplo</span>' : ''}${c.category ? escape(c.category) : ''}<span class="chevron">${icon('chevron')}</span></span></div>
-      <div class="day-line"><strong class="day-number" data-time="days" data-counter="${escape(c.id)}">${p.days}</strong><span class="day-label" data-time="day-label" data-counter="${escape(c.id)}">${p.days === 1 ? 'dia' : 'dias'}</span></div>
+      <div class="day-line card-time-line"><strong class="day-number" data-time="card-value" data-counter="${escape(c.id)}">${compact.value}</strong><span class="day-label" data-time="card-label" data-counter="${escape(c.id)}">${compact.label}</span><span class="card-time-remainder" data-time="card-detail" data-counter="${escape(c.id)}">${compact.detail}</span></div>
       <h2 class="counter-name">${escape(c.name)}</h2>
-      <div class="exact-time" data-time="duration" data-counter="${escape(c.id)}">${duration(s.current)}</div>
       <div class="card-footer"><span>Desde ${escape(date(c.start))}</span><span class="record-label" data-time="record" data-counter="${escape(c.id)}">Recorde: ${days(s.best)}</span></div>
     </button>
     ${reordering ? `<div class="move-controls"><button data-action="move" data-id="${escape(c.id)}" data-direction="-1" aria-label="Mover ${escape(c.name)} para cima" ${index === 0 ? 'disabled' : ''}>${icon('up')}</button><button data-action="move" data-id="${escape(c.id)}" data-direction="1" aria-label="Mover ${escape(c.name)} para baixo" ${index === list.length - 1 ? 'disabled' : ''}>${icon('down')}</button></div>` : `<button class="card-restart" data-action="restart" data-id="${escape(c.id)}">${icon('reset')}Recomeçar contador</button>`}
@@ -106,7 +105,7 @@ function settings() {
     <h2 class="settings-heading">Seus dados</h2><section class="panel settings-list">${settingsRow('export','Exportar backup','Todos os contadores e históricos em JSON','export')}${settingsRow('import','Importar backup','Validar e restaurar um arquivo JSON','import')}${settingsRow('archives','Contadores arquivados',`${state.counters.filter(c => c.archived).length} arquivados · a contagem continua`,'archive')}${state.counters.some(c => c.demo) ? settingsRow('remove-demo','Remover demonstração','Apagar apenas os contadores de exemplo','trash',true) : ''}</section>
     <p class="muted">Os dados ficam no armazenamento deste navegador ou PWA. Exporte um backup antes de limpar os dados do Safari ou trocar de dispositivo. O arquivo contém seus registros pessoais.</p>
     <h2 class="settings-heading">Aplicativo</h2><section class="panel settings-list">${settingsRow('install','Instalar no iPhone','Adicionar à Tela de Início pelo Safari','phone')}${settingsRow('check-update','Buscar atualização','Verificar se há uma nova versão','reset')}</section>
-    <section class="panel privacy">${icon('shield')}<div><strong>Seu tempo é só seu</strong><p>Sem cadastro, analytics ou rastreadores. Os registros não são enviados a servidores.</p></div></section><p class="version">Tô limpo? · versão 1.0.1</p>`;
+    <section class="panel privacy">${icon('shield')}<div><strong>Seu tempo é só seu</strong><p>Sem cadastro, analytics ou rastreadores. Os registros não são enviados a servidores.</p></div></section><p class="version">Tô limpo? · versão 1.0.3</p>`;
 }
 function render() {
   content.innerHTML = selected ? detail() : page === 'home' ? home() : page === 'history' ? history() : settings();
@@ -114,20 +113,40 @@ function render() {
     const current = button.dataset.page === page;
     if (current) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current');
   });
+  scheduleTick();
 }
 function tick() {
   if (!state || document.hidden) return;
   const now = Date.now();
   content.querySelectorAll('[data-time]').forEach(el => {
     const c = getCounter(el.dataset.counter); if (!c) return;
-    const s = stats(c, now), p = parts(s.current), kind = el.dataset.time;
-    const value = kind === 'duration' ? duration(s.current) : kind === 'record' ? `Recorde: ${days(s.best)}` : kind === 'best' ? days(s.best) : kind === 'current-history' ? `Sequência atual: ${days(s.current)}` : kind === 'day-label' ? p.days === 1 ? 'dia' : 'dias' : String(p[kind]).padStart(kind === 'days' ? 1 : 2,'0');
+    const s = stats(c, now), p = parts(s.current), compact = cardTime(s.current), kind = el.dataset.time;
+    const value = kind === 'card-value' ? String(compact.value) : kind === 'card-label' ? compact.label : kind === 'card-detail' ? compact.detail : kind === 'duration' ? duration(s.current) : kind === 'record' ? `Recorde: ${days(s.best)}` : kind === 'best' ? days(s.best) : kind === 'current-history' ? `Sequência atual: ${days(s.current)}` : kind === 'day-label' ? p.days === 1 ? 'dia' : 'dias' : String(p[kind]).padStart(kind === 'days' ? 1 : 2,'0');
     if (el.textContent !== value) el.textContent = value;
   });
   content.querySelectorAll('[data-milestones]').forEach(el => {
     const c = getCounter(el.dataset.milestones); if (!c) return;
     const html = milestoneHTML(c); if (html !== el.innerHTML) el.innerHTML = html;
   });
+}
+function nextBoundary(start, interval, now) {
+  const passed = elapsed(start, now);
+  return interval - (passed % interval) + 25;
+}
+function scheduleTick() {
+  clearTimeout(tickTimer);
+  if (!state || document.hidden) return;
+  const now = Date.now();
+  let delays = [];
+  if (selected) {
+    const counter = getCounter();
+    if (counter) delays.push(nextBoundary(counter.start, 1000, now));
+  } else if (page === 'home') {
+    delays = state.counters.filter(c => !c.archived).map(c => nextBoundary(c.start, cardTime(elapsed(c.start, now)).interval, now));
+  } else if (page === 'history') {
+    delays = state.counters.map(c => nextBoundary(c.start, DAY, now));
+  }
+  if (delays.length) tickTimer = setTimeout(() => { tick(); scheduleTick(); }, Math.max(50, Math.min(...delays)));
 }
 function openSheet(heading, html) {
   $('#sheet-title').textContent = heading; sheetBody.innerHTML = html;
@@ -266,7 +285,7 @@ async function refresh() { if(!state || busy) return; try { state=await readStat
 channel && (channel.onmessage=refresh);
 document.addEventListener('visibilitychange',() => { if(!document.hidden) { refresh(); checkUpdates().catch(() => {}); } });
 async function main() {
-  try { state=await initialize(); applyTheme(); render(); setInterval(tick,1000); setupUpdates({ toast, isEditing:() => sheet.open }); }
+  try { state=await initialize(); applyTheme(); render(); setupUpdates({ toast, isEditing:() => sheet.open }); }
   catch(error) { content.innerHTML=empty('Não foi possível abrir', escape(error.message),'<button class="primary" id="retry">Tentar novamente</button>'); $('#retry').onclick=() => location.reload(); }
 }
 main();

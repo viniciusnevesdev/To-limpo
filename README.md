@@ -7,6 +7,7 @@ PWA leve, em português, para acompanhar o tempo desde a última vez que uma ati
 - Contadores personalizados, com nome, descrição, emoji, cor e categoria opcional.
 - Tempo calculado a partir de timestamps: fechar o aplicativo não interrompe a contagem.
 - Dias completos de 24 horas, horas, minutos e segundos na tela detalhada.
+- Cartões iniciais com até três medidas de tempo: segundos antes de 1 dia, minutos até 7 dias e horas depois disso.
 - Reinício confirmado, imediato ou em uma data passada; preserva início anterior, ocorrência, duração e novo início.
 - Histórico por contador e geral; recorde inclui a sequência atual, média inclui apenas sequências encerradas.
 - Marcos em dias; seis meses e um ano seguem o calendário local, ajustando o último dia do mês.
