@@ -1,4 +1,4 @@
-const VERSION='1.0.0';
+const VERSION='1.0.1';
 const PREFIX=`to-limpo:${new URL(self.registration.scope).pathname}:`;
 const CACHE=PREFIX+VERSION;
 const ASSETS=['./','./index.html','./styles.css','./app.js','./model.js','./storage.js','./updates.js','./manifest.json','./icons/icon-192.png','./icons/icon-512.png','./icons/maskable-512.png','./icons/apple-touch-icon.png'];

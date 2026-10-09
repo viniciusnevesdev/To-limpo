@@ -11,6 +11,7 @@ button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
 button:active:not(:disabled) { opacity:.75; }
 [hidden] { display:none!important; }
 svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; display:block; }
+.filled-icon { fill:currentColor; stroke:none; }
 .app-shell { width:min(100%,500px); margin:auto; padding:calc(28px + env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) calc(110px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
 .page-header { display:flex; justify-content:space-between; align-items:center; margin:0 2px 26px; }
 .eyebrow { font-size:11px; font-weight:750; letter-spacing:.14em; color:var(--accent-text); margin:0 0 8px; }
